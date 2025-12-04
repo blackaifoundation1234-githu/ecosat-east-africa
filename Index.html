@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0D1117">
+    <title>ECO-EARS | East Africa Wildlife Tracker</title>
+    
+    <!-- GOOGLE FONTS & MATERIAL ICONS -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined|Material+Icons+Round|Material+Icons+Sharp" rel="stylesheet">
+    
+    <!-- LEAFLET MAP -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- PWA MANIFEST -->
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkVDTy1FQVJTIExpdmUgVHJhY2tlciIsCiAgInNob3J0X25hbWUiOiAiRWNvRWFycyIsCiAgInN0YXJ0X3VybCI6ICIvIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAidGhlbWVfY29sb3IiOiAiIzBEMTExNyIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzBEMTExNyIKfQ==">
+    
+    <style>
+        :root {
+            --primary: #0D1117; /* Night sky base */
+            --accent: #00BFFF; /* Deep sky blue */
+            --success: #00FF7F; /* Spring green */
+            --warning: #FFD700; /* Gold */
+            --danger: #FF4500; /* Orange red */
+            --text: #FFFFFF;
+            --text-variant: #E0E0E0;
+            --surface: rgba(255,255,255,0.05);
+            --shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Google Sans', -apple-system, sans-serif;
+            color: var(--text);
+            line-height: 1.6;
+            background: #0D1117 url('https://svs.gsfc.nasa.gov/vis/a000000/a005500/a005572/starfield.jpg') fixed;
+            background-size: cover;
+            overflow-x: hidden;
+        }
+
+        /* NAVIGATION BAR */
+        .nav-bar {
+            position: sticky;
+            top: 0;
+            background: rgba(13,17,23,0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            z-index: 1000;
+            height: 72px;
+            display: flex;
+            align-items: center;
+            padding: 0 48px;
+            box-shadow: var(--shadow);
+        }
+
+        .nav-logo {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent);
+            text-shadow: 0 0 16px rgba(0,191,255,0.4);
+        }
+
+        .nav-links {
+            flex: 1;
+            display: flex;
+            justify-content: flex-end;
+            gap: 32px;
+        }
+
+        .nav-link {
+            color: var(--text-variant);
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text);
+            text-shadow: 0 0 8px var(--accent);
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 3px;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .nav-link:hover::after, .nav-link.active::after {
+            width: 100%;
+        }
+
+        /* SECTIONS */
+        .section {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 80px 48px;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .section-title {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--accent);
+            text-shadow: 0 0 24px rgba(0,191,255,0.6);
+            margin-bottom: 48px;
+            text-align: center;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 16px rgba(0,191,255,0.4); }
+            to { text-shadow: 0 0 32px rgba(0,191,255,0.8); }
+        }
+
+        /* HOME SECTION */
+        #home {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .hero-description {
+            font-size: 24px;
+            font-weight: 300;
+            color: var(--text-variant);
+            max-width: 800px;
+            margin: 0 auto 48px;
+            text-shadow: 0 0 8px rgba(255,255,255,0.2);
+        }
+
+        .video-container {
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 64px;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .video-container iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+
+        /* LIVE CAMS GRID */
+        .cams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 32px;
+            width: 100%;
+        }
+
+        .cam-card {
+            background: var(--surface);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .cam-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 48px rgba(0,191,255,0.2);
+        }
+
+        .cam-header {
+            padding: 16px 24px;
+            background: linear-gradient(135deg, rgba(0,191,255,0.2), rgba(0,255,127,0.2));
+            color: var(--text);
+            font-weight: 600;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            text-shadow: 0 0 8px rgba(0,191,255,0.3);
+        }
+
+        .cam-video {
+            height: 300px;
+            background: #000;
+        }
+
+        .cam-video iframe {
+            width: 100%;
+            height: 100%;
+        }
+
+        .cam-footer {
+            padding: 16px 24px;
+            background: rgba(255,255,255,0.05);
+            color: var(--text-variant);
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* CONTACT SECTION */
+        #contact {
+            text-align: center;
+        }
+
+        .contact-info {
+            font-size: 24px;
+            font-weight: 300;
+            color: var(--text-variant);
+            margin: 48px 0;
+            padding: 32px;
+            background: var(--surface);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.1);
+            max-width: 600px;
+            margin: 48px auto;
+        }
+
+        .contact-number {
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--success);
+            text-shadow: 0 0 16px rgba(0,255,127,0.4);
+        }
+
+        /* LIVE MAPS SECTION */
+        #live-maps {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .map-container {
+            width: 100%;
+            max-width: 1200px;
+            height: 600px;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 64px;
+        }
+
+        #liveMap { height: 100%; }
+
+        /* DASHBOARD SECTION */
+        #dashboard {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 32px;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 64px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 48px rgba(0,191,255,0.2);
+        }
+
+        .stat-icon {
+            font-size: 64px;
+            margin-bottom: 24px;
+            color: var(--accent);
+            text-shadow: 0 0 16px rgba(0,191,255,0.4);
+        }
+
+        .stat-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .stat-value {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--success);
+            text-shadow: 0 0 16px rgba(0,255,127,0.4);
+        }
+
+        .stat-trend {
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--warning);
+            margin-top: 8px;
+        }
+
+        /* CHARTS IN DASHBOARD */
+        .chart-container {
+            width: 100%;
+            max-width: 1200px;
+            height: 400px;
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 64px;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .nav-bar { padding: 0 24px; }
+            .nav-links { gap: 24px; font-size: 14px; }
+            .section { padding: 64px 24px; }
+            .video-container iframe { height: 300px; }
+            .cams-grid { grid-template-columns: 1fr; }
+            .cam-video { height: 200px; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .map-container { height: 400px; }
+            .chart-container { height: 300px; }
+        }
+
+        /* ANIMATIONS */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.3) 100%);
+            pointer-events: none;
+            animation: twinkle 3s infinite;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <!-- NAVIGATION BAR -->
+    <nav class="nav-bar">
+        <div class="nav-logo">ECO-SAT</div>
+        <div class="nav-links">
+            <a href="#home" class="nav-link active">HOME</a>
+            <a href="#contact" class="nav-link">CONTACT</a>
+            <a href="#live-maps" class="nav-link">LIVE MAPS</a>
+            <a href="#dashboard" class="nav-link">DASHBOARD</a>
+        </div>
+    </nav>
+
+    <!-- HOME SECTION -->
+    <section id="home" class="section">
+        <div class="hero">
+            <h1 class="section-title">ECO-SAT: FOR EAST AFRICA DEVELOPMENT</h1>
+            <p class="hero-description"></p><strong>Discover East Africa's wildlife in real-time with live cameras, interactive maps, and population dashboards. Powered for support the project ROYAL TOUR .</strong></p>
+        </div>
+        
+        <div class="video-container">
+            <iframe src="https://www.youtube.com/embed/3zYV3y5U5z0?autoplay=1&mute=1&loop=1&playlist=3zYV3y5U5z0" title="East Africa Wildlife Video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+        
+        <h2 style="font-size: 36px; font-weight: 600; color: var(--accent); text-shadow: 0 0 16px rgba(0,191,255,0.4); margin-bottom: 48px; text-align: center;">Live Camera Feeds</h2>
+        
+        <div class="cams-grid">
+            <div class="cam-card">
+                <div class="cam-header">
+                    <span class="material-icons-round" style="font-size: 24px; color: var(--success);">videocam</span>
+                    Serengeti Plains - Tanzania
+                </div>
+                <div class="cam-video">
+                    <iframe src="https://www.youtube.com/embed/live_stream?channel=UCuoNAKa3P0QR1Lw9QdpmoVg&autoplay=1&mute=0" allowfullscreen></iframe>
+                </div>
+                <div class="cam-footer">
+                    Watch live lions, zebras, and migrations in the heart of Serengeti.
+                </div>
+            </div>
+            
+            <div class="cam-card">
+                <div class="cam-header">
+                    <span class="material-icons-round" style="font-size: 24px; color: var(--success);">videocam</span>
+                    Maasai Mara Waterhole - Kenya
+                </div>
+                <div class="cam-video">
+                    <iframe src="https://www.youtube.com/embed/live_stream?channel=UCuoNAKa3P0QR1Lw9QdpmoVg&autoplay=1&mute=0" allowfullscreen></iframe>
+                </div>
+                <div class="cam-footer">
+                    Elephants, hippos, and predators gathering at the watering hole.
+                </div>
+            </div>
+            
+            <div class="cam-card">
+                <div class="cam-header">
+                    <span class="material-icons-round" style="font-size: 24px; color: var(--success);">videocam</span>
+                    Lake Victoria Shore - Uganda
+                </div>
+                <div class="cam-video">
+                    <iframe src="https://www.youtube.com/embed/live_stream?channel=UCuoNAKa3P0QR1Lw9QdpmoVg&autoplay=1&mute=0" allowfullscreen></iframe>
+                </div>
+                <div class="cam-footer">
+                    Fish activity and birdlife along the lake shores.
+                </div>
+            </div>
+            
+            <div class="cam-card">
+                <div class="cam-header">
+                    <span class="material-icons-round" style="font-size: 24px; color: var(--success);">videocam</span>
+                    Ngorongoro Crater - Tanzania
+                </div>
+                <div class="cam-video">
+                    <iframe src="https://www.youtube.com/embed/live_stream?channel=UCuoNAKa3P0QR1Lw9QdpmoVg&autoplay=1&mute=0" allowfullscreen></iframe>
+                </div>
+                <div class="cam-footer">
+                    Rhinos, buffalos, and flamingos in the crater floor.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CONTACT SECTION -->
+    <section id="contact" class="section">
+        <h1 class="section-title">Contact Us</h1>
+        <div class="contact-info">
+            <p>For inquiries about ECO-EARS project, conservation efforts, or collaboration:</p>
+            <div class="contact-number">+255793439295</div>
+        </div>
+        
+        <div style="display: flex; justify-content: center; gap: 32px; margin-top: 64px;">
+            <img src="https://images.unsplash.com/photo-1483728642387-6c3bdd6c93e5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80" alt="East Africa Wildlife" style="width: 45%; border-radius: 24px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.1);">
+            <img src="https://images.unsplash.com/photo-1501700493788-fa1a4fc9fe62?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80" alt="Conservation" style="width: 45%; border-radius: 24px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.1);">
+        </div>
+    </section>
+
+    <!-- LIVE MAPS SECTION -->
+    <section id="live-maps" class="section">
+        <h1 class="section-title">Live Maps</h1>
+        <div class="map-container">
+            <div id="liveMap"></div>
+        </div>
+        
+        <div style="display: flex; justify-content: center; gap: 32px;">
+            <img src="https://images.unsplash.com/photo-1504197832273-12f0be6ed501?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80" alt="Satellite View" style="width: 30%; border-radius: 24px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.1);">
+            <img src="https://images.unsplash.com/photo-1449452198679-4c9fd30ca6d3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80" alt="Animal Migration" style="width: 30%; border-radius: 24px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.1);">
+            <img src="https://images.unsplash.com/photo-1547471080-5e987edfc5fd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80" alt="Vegetation Map" style="width: 30%; border-radius: 24px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.1);">
+        </div>
+    </section>
+
+    <!-- DASHBOARD SECTION -->
+    <section id="dashboard" class="section">
+        <h1 class="section-title">Dashboard</h1>
+        <div class="dashboard-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🦁</div>
+                <div class="stat-title">Lions</div>
+                <div class="stat-value" id="lionPop">947</div>
+                <div class="stat-trend" id="lionTrend">-0.3%</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">🐘</div>
+                <div class="stat-title">Elephants</div>
+                <div class="stat-value" id="elephantPop">2,298</div>
+                <div class="stat-trend" id="elephantTrend">+1.2%</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">🦓</div>
+                <div class="stat-title">Zebras</div>
+                <div class="stat-value">19,892</div>
+                <div class="stat-trend">-0.5%</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">🐟</div>
+                <div class="stat-title">Fish</div>
+                <div class="stat-value" id="fishPop">1.23M</div>
+                <div class="stat-trend" id="fishTrend">-4.7%</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">🌿</div>
+                <div class="stat-title">Vegetation</div>
+                <div class="stat-value" id="vegCover">87.3%</div>
+                <div class="stat-trend" id="vegTrend">-0.8%</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">🌡️</div>
+                <div class="stat-title">Temperature</div>
+                <div class="stat-value">26°C</div>
+                <div class="stat-trend">+1.8°C anomaly</div>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <canvas id="populationChart"></canvas>
+        </div>
+        
+        <div style="display: flex; justify-content: center; gap: 32px;">
+            <video src="https://assets.mixkit.co/videos/preview/mixkit-zebras-at-a-watering-hole-399-small.mp4" autoplay loop muted playsinline style="width: 45%; border-radius: 24px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.1);"></video>
+            <video src="https://assets.mixkit.co/videos/preview/mixkit-elephant-in-the-savannah-396-small.mp4" autoplay loop muted playsinline style="width: 45%; border-radius: 24px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,0.1);"></video>
+        </div>
+    </section>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+                // NAVIGATION SMOOTH SCROLL
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth' });
+                
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        // LIVE MAP
+        let liveMap;
+        function initLiveMap() {
+            liveMap = L.map('liveMap').setView([-1.2921, 36.8219], 5);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© ECO-EARS'
+            }).addTo(liveMap);
+
+            // WILDLIFE MARKERS WITH ANIMATIONS
+            const markers = [
+                { coords: [-2.3333, 34.8333], icon: '🦁', popup: 'Serengeti Lions: 947 (-0.3%)' },
+                { coords: [-3.1667, 35.5833], icon: '🐘', popup: 'Ngorongoro Elephants: 2,298 (+1.2%)' },
+                { coords: [-0.5, 33.5], icon: '🐟', popup: 'Lake Victoria Fish: 1.23M (-4.7%)' },
+                { coords: [-2.4, 34.7], icon: '🌿', popup: 'Serengeti Vegetation: 87.3% (-0.8%)' }
+            ];
+
+            markers.forEach((m, i) => {
+                setTimeout(() => {
+                    const marker = L.circleMarker(m.coords, {
+                        radius: 16,
+                        fillColor: '#00BFFF',
+                        color: '#fff',
+                        weight: 4,
+                        fillOpacity: 0.9
+                    }).bindPopup(m.popup);
+                    marker.addTo(liveMap);
+                }, i * 400);
+            });
+        }
+
+        // POPULATION CHART
+        function initPopulationChart() {
+            new Chart(document.getElementById('populationChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Lions', 'Elephants', 'Zebras', 'Fish', 'Vegetation'],
+                    datasets: [{
+                        label: 'Population',
+                        data: [947, 2298, 19892, 1230000, 87.3],
+                        backgroundColor: [
+                            'rgba(0,191,255,0.7)',
+                            'rgba(0,255,127,0.7)',
+                            'rgba(255,215,0,0.7)',
+                            'rgba(255,69,0,0.7)',
+                            'rgba(138,43,226,0.7)'
+                        ],
+                        borderColor: 'rgba(255,255,255,0.5)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    animation: { duration: 2000, easing: 'easeInOutQuart' },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        // LIVE UPDATES
+        function updateLiveData() {
+            document.getElementById('lionPop').textContent = Math.round(947 + (Math.random() - 0.5) * 5);
+            document.getElementById('elephantPop').textContent = Math.round(2298 + (Math.random() - 0.4) * 8);
+            document.getElementById('fishPop').textContent = (1.23 + (Math.random() - 0.5) * 0.02).toFixed(2) + 'M';
+            document.getElementById('vegCover').textContent = (87.3 + (Math.random() - 0.5) * 0.2).toFixed(1) + '%';
+        }
+
+        // INIT
+        window.addEventListener('load', () => {
+            initLiveMap();
+            initPopulationChart();
+            setInterval(updateLiveData, 5000);
+        });
+    </script>
+</body>
+</html>
